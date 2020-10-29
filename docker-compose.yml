@@ -1,0 +1,68 @@
+version: "3"
+
+networks:
+    magento:
+
+services:
+    nginx:
+        restart: always
+        image: nginx:latest
+        working_dir: /var/www/html/magento
+        volumes:
+            - ./:/var/www/html/magento
+            - ./dev/docker/config/nginx.conf:/etc/nginx/conf.d/default.conf
+        expose:
+            - "80"
+        networks:
+            - magento
+    php:
+        build:
+            context: ./dev/docker/config
+        restart: always
+        working_dir: /var/www/html/magento
+        volumes:
+            - ./:/var/www/html/magento
+        expose:
+            - "9000"
+        networks:
+            - magento
+    mysql:
+        restart: always
+        image: mysql:5.7
+        command: mysqld --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+        volumes:
+            - ./dev/docker/data:/var/lib/mysql
+        environment:
+            MYSQL_DATABASE: magento
+            MYSQL_USER: magento
+            MYSQL_PASSWORD: secret
+            MYSQL_ROOT_PASSWORD: root
+        ports:
+            - "3307:3306"
+        networks:
+            - magento
+    es:
+        image: elasticsearch:7.8.1
+        environment:
+            - "discovery.type=single-node"
+        expose:
+            - "9200"
+            - "9300"
+        networks:
+            - magento
+    redis:
+        restart: always
+        image: redis
+        expose:
+            - "6379"
+        networks:
+            - magento
+    varnish:
+        restart: always
+        image: varnish:6
+        volumes:
+            - ./dev/docker/config/varnish.vcl:/etc/varnish/default.vcl
+        ports:
+            - "8080:80"
+        networks:
+            - magento
